@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<operatorModel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.ibm.com/xmlns/prod/streams/spl/operator" xmlns:cmn="http://www.ibm.com/xmlns/prod/streams/spl/common" xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/operator operatorModel.xsd">
+  <javaOperatorModel>
+    <context>
+      <description docHref="doc/${nl}/spldoc/html/tk$com.ibm.streamsx.hdfs/op$com.ibm.streamsx.hdfs$HDFS2DirectoryScan.html">
+The `HDFS2DirectoryScan` operator scans a Hadoop Distributed File System directory for new or modified files.
+
+The `HDFS2DirectoryScan` is similar to the `DirectoryScan` operator. 
+The `HDFS2DirectoryScan` operator repeatedly scans an HDFS directory and writes the names of new or modified files 
+that are found in the directory to the output port. The operator sleeps between scans.
+
+# Behavior in a consistent region
+
+ The `HDFS2DirectoryScan` operator can participate in a consistent region.
+ The operator can be at the start of a consistent region if there is no input port.
+ The operator supports periodic and operator-driven consistent region policies.
+ 
+ If consistent region policy is set as operator driven, the operator initiates a drain after each tuple is submitted.
+ This allows for a consistent state to be established after a file is fully processed.
+ If consistent region policy is set as periodic, the operator respects the period setting and establishes consistent states accordingly.
+ This means that multiple files can be processed before a consistent state is established.
+ 
+ At checkpoint, the operator saves the last submitted filename and its modification timestamp to the checkpoint.
+ Upon application failures, the operator resubmits all files that are newer than the last submitted file at checkpoint.
+
+# Exceptions
+
+The operator terminates in the following cases:
+ * The operator cannot connect to HDFS.
+ * The **strictMode** parameter is true but the directory is not found.
+ * The path that is given by the directory name exists, but is an ordinary file and not a directory.
+ * HDFS failed to give a list of files in the directory.
+ * The pattern that is specified in the pattern parameter fails to compile.
+
++ Examples
+
+This example uses the `HDFS2DirectoryScan` operator to scan the HDFS directory every two seconds. 
+The operator overrides the value that is specified by the `fs.defaultFS` option in the `core-site.xml`.
+
+	
+	(stream&lt;rstring filename&gt; Files) as HDFS2DirectoryScan_1 = HDFS2DirectoryScan()
+	{
+		param
+			directory :"/user/myuser/";
+			hdfsUri   :"hdfs://hdfsServer:1883";
+			sleepTime : 2.0;
+	}
+	
+ </description>
+      <iconUri size="32">HDFS2DirectoryScan_32.gif</iconUri>
+      <iconUri size="16">HDFS2DirectoryScan_16.gif</iconUri>
+      <metrics>
+        <metric>
+          <name>nScans</name>
+          <description sampleUri="">The number of times the operator scanned the directory.</description>
+          <kind>Counter</kind>
+        </metric>
+      </metrics>
+      <executionSettings>
+        <className>com.ibm.streamsx.hdfs.HDFS2DirectoryScan</className>
+        <vmArgs/>
+      </executionSettings>
+      <libraryDependencies>
+        <library>
+          <cmn:description>Java operator class library</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:libPath>../../impl/java/bin</cmn:libPath>
+            <cmn:libPath>../../impl/lib/BigData.jar</cmn:libPath>
+            <cmn:command></cmn:command>
+          </cmn:managedLibrary>
+        </library>
+        <library>
+          <cmn:description>apache library</cmn:description>
+          <cmn:managedLibrary>
+            <cmn:libPath>@HADOOP_HOME@/../hadoop-conf</cmn:libPath>
+            <cmn:libPath>@HADOOP_HOME@/etc/hadoop</cmn:libPath>
+            <cmn:libPath>@HADOOP_HOME@/conf</cmn:libPath>
+            <cmn:libPath>@HADOOP_HOME@/share/hadoop/hdfs/*</cmn:libPath>
+            <cmn:libPath>@HADOOP_HOME@/share/hadoop/common/*</cmn:libPath>
+            <cmn:libPath>@HADOOP_HOME@/share/hadoop/common/lib/*</cmn:libPath>
+            <cmn:libPath>@HADOOP_HOME@/lib/*</cmn:libPath>
+            <cmn:libPath>@HADOOP_HOME@/client/*</cmn:libPath>
+            <cmn:libPath>@HADOOP_HOME@/*</cmn:libPath>
+            <cmn:libPath>@HADOOP_HOME@/../hadoop-hdfs/*</cmn:libPath>
+          </cmn:managedLibrary>
+        </library>
+      </libraryDependencies>
+      <codeTemplates>
+        <codeTemplate name="HDFS2DirectoryScan">
+          <description>Basic use of HDFS Directory Scan</description>
+          <template>stream&lt;rstring name> ${outputStream} = HDFS2DirectoryScan()   {
+            param
+                directory: &quot;${directoryToScan}&quot;;
+        } </template>
+        </codeTemplate>
+        <codeTemplate name="HDFS2DirectoryScan with hdfsUser and hdfsUri">
+          <description>HDFS2DirectoryScan template with optional parameters. If hdfsUri parameter is provided , operator will connect using the host and port given in the hdfsUri and if hdfsUser is provided , operator will connect using the user given in the hdfsUser.</description>
+          <template>stream&lt;rstring name> ${outputStream} = HDFS2DirectoryScan()   {
+            param
+                directory: &quot;${directoryToScan}&quot;
+                hdfsUser: &quot;${hdfsUser}&quot;;
+                hdfsUri: &quot;${hdfsUri}&quot;;
+        } </template>
+        </codeTemplate>
+        <codeTemplate name="HDFS2DirectoryScan with HDFS2FileSource">
+          <description>Read all the files in an HDFS directory</description>
+          <template>stream&lt;rstring name> ${outputStream} = HDFS2DirectoryScan()   {
+            param
+                directory: &quot;${directoryToScan}&quot;;
+        }
+        
+        stream&lt;${schema}> ${fileSourceStream} = HDFS2FileSource(${outputStream})   {
+        }</template>
+        </codeTemplate>
+      </codeTemplates>
+    </context>
+    <parameters>
+      <description></description>
+      <parameter>
+        <name>directory</name>
+        <description>This optional parameter specifies the name of the directory to be scanned. If the name starts with a slash, it is considered an absolute directory that you want to scan. If it does not start with a slash, it is considered a relative directory, relative to the '/user/*userid*/ directory. This parameter is mandatory if the input port is not specified.</description>
+        <optional>true</optional>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>initDelay</name>
+        <description sampleUri="">This optional parameter specifies the time to wait in seconds before the operator scans the directory for the first time. The default value is 0.</description>
+        <optional>true</optional>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>sleepTime</name>
+        <description sampleUri="">This optional parameter specifies the minimum time between directory scans. The default value is 5.0 seconds. </description>
+        <optional>true</optional>
+        <type>float64</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>pattern</name>
+        <description sampleUri="">
+This optional parameter limits the file names that are listed to the names that match the specified regular expression. 
+The `HDFS2DirectoryScan` operator ignores file names that do not match the specified regular expression. </description>
+        <optional>true</optional>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>strictMode</name>
+        <description sampleUri="">This optional parameter determines whether the operator reports an error if the directory to be scanned does not exist. If you set this parameter to true and the specified directory does not exist or there is a problem accessing the directory, the operator reports an error and terminates. If you set this parameter to false and the specified directory does not exist or there is a problem accessing the directory, the operator treats it as an empty directory and does not report an error. </description>
+        <optional>true</optional>
+        <type>boolean</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>hdfsUri</name>
+        <description>This optional parameter of type rstring specifies the uniform resource identifier (URI) that you can use to connect to HDFS. The URI defines the host and the port that you can use to connect to HDFS. The URI has the following format:
+ * To access HDFS locally or remotely, use `hdfs://hdfshost:hdfsport` 
+ * To access GPFS locally, use `gpfs:///` 
+ * To access GPFS remotely, use `webhdfs://hdfshost:webhdfsport` 
+ 
+If this parameter is not specified, the operator finds the HDFS URI from the `fs.defaultFS` or `fs.default.name` option in the `core-site.xml` HDFS configuration file. The `core-site.xml` is expected to be located in one of the following locations:
+ * `$HADOOP_HOME/../hadoop-conf`
+ * `$HADOOP_HOME/etc/hadoop` 
+ * `$HADOOP_HOME/conf` 
+ * `$HADOOP_HOME/share/hadoop/hdfs/\*` 
+ * `$HADOOP_HOME/share/hadoop/common/\*` 
+ * `$HADOOP_HOME/share/hadoop/common/lib/\*` 
+ * `$HADOOP_HOME/lib/\*` 
+ * `$HADOOP_HOME/\*` 
+You can use the **hdfsUri** parameter to override the value that is specified for the `fs.defaultFS` or `fs.default.name` option in the `core-site.xml` configuration file.</description>
+        <optional>true</optional>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>hdfsUser</name>
+        <description>This optional parameter specifies the user ID to use when you connect to HDFS. If this parameter is not specified, the operator uses the instance owner ID to connect to HDFS. 
+
+When you use Kerberos authentication, the operator authenticates with the Hadoop file system as the instance owner by using the values specified by the **authPrincipal** and **authKeytab** parameters. After successful authentication, the operator uses the user ID that is specified by the **hdfsUser** parameter to perform all other operations on the file system.
+
+Note: When using Kerberos authentication, to perform operations as the user specified by the **hdfsUser** parameter, the InfoSphere Streams instance owner must have super user privileges on HDFS or GPFS.
+</description>
+        <optional>true</optional>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>authPrincipal</name>
+        <description>This optional parameter specifies the Kerberos principal that you use for authentication. This value is set to the principal that is created for the InfoSphere Streams instance owner. You must specify this parameter if you want to use Kerberos authentication.</description>
+        <optional>true</optional>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>authKeytab</name>
+        <description>This parameter specifies the file that contains the encrypted keys for the user that is specified by the **authPrincipal** parameter. The operator uses this keytab file to authenticate the user. The keytab file is generated by the administrator. You must specify this parameter to use Kerberos authentication.</description>
+        <optional>true</optional>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>credFile</name>
+        <description>This optional parameter contains the login credentials to use when you connect to GPFS remotely by using the `webhdfs://hdfshost:webhdfsport` schema. The credentials file must contain information on how to authenticate with IBM InfoSphere BigInsights when using the webhdfs schema. For example, the file must contain the user name and password for an IBM InfoSphere BigInsights user.</description>
+        <optional>true</optional>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+      <parameter>
+        <name>configPath</name>
+        <description>This optional parameter specifies the absolute path to the directory that contains the HDFS configuration files. If this parameter is not specified, by default the operator looks for the `core-site.xml` file in the following locations:
+ * `$HADOOP_HOME/../hadoop-conf`
+ * `$HADOOP_HOME/etc/hadoop`
+ * `$HADOOP_HOME/conf`
+ * `$HADOOP_HOME/share/hadoop/hdfs/\*`
+ * `$HADOOP_HOME/share/hadoop/common/\*`
+ * `$HADOOP_HOME/share/hadoop/common/lib/\*`
+ * `$HADOOP_HOME/lib/\*`
+ * `$HADOOP_HOME/\*`
+</description>
+        <optional>true</optional>
+        <type>rstring</type>
+        <cardinality>1</cardinality>
+      </parameter>
+    </parameters>
+    <inputPorts>
+      <inputPortSet>
+        <description>
+The `HDFS2DirectoryScan` operator has an optional control input port. You can use this port to change the directory 
+that the operator scans at run time without restarting or recompiling the application.  
+The expected schema for the input port is of tuple&lt;rstring directory&gt;, a schema containing a single attribute of type rstring.  
+If a directory scan is in progress when a tuple is received, the scan completes and a new scan starts immediately after 
+and uses the new directory that was specified.  
+If the operator is sleeping, the operator starts scanning the new directory immediately after it receives an input tuple.</description>
+        <windowingDescription>This operator does not support any window configurations.</windowingDescription>
+        <windowingMode>NonWindowed</windowingMode>
+        <windowPunctuationInputMode>Oblivious</windowPunctuationInputMode>
+        <controlPort>true</controlPort>
+        <cardinality>1</cardinality>
+        <optional>true</optional>
+      </inputPortSet>
+    </inputPorts>
+    <outputPorts>
+      <outputPortSet>
+        <description>
+The `HDFS2DirectoryScan` operator has one output port. 
+This port provides tuples of type rstring that are encoded in UTF-8 and represent the file names that are found in the directory, 
+one file name per tuple.  The file names do not occur in any particular order. 
+The port is non-mutating and punctuation free.</description>
+        <windowPunctuationOutputMode>Free</windowPunctuationOutputMode>
+        <windowPunctuationInputPort>-1</windowPunctuationInputPort>
+        <cardinality>1</cardinality>
+        <optional>false</optional>
+      </outputPortSet>
+    </outputPorts>
+  </javaOperatorModel>
+</operatorModel>
